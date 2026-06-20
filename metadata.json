@@ -1,0 +1,6 @@
+{
+  "name": "Slack Manager Digest",
+  "description": "An AI-powered dashboard that aggregates corporate Slack channels, simulates key incidents, and synthesizes structured Executive Digests including decisions, blockers, action tasks, and team sentiment using Gemini.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
