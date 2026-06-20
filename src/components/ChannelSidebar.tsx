@@ -20,6 +20,10 @@ interface ChannelSidebarProps {
   scenarios: Scenario[];
   activeScenarioId: string;
   onSelectScenario: (id: string) => void;
+  isMultiChannelMode: boolean;
+  onToggleMultiChannelMode: () => void;
+  selectedChannelIds: Record<string, boolean>;
+  onToggleChannelSelect: (id: string) => void;
 }
 
 export default function ChannelSidebar({
@@ -29,6 +33,10 @@ export default function ChannelSidebar({
   scenarios,
   activeScenarioId,
   onSelectScenario,
+  isMultiChannelMode,
+  onToggleMultiChannelMode,
+  selectedChannelIds,
+  onToggleChannelSelect,
 }: ChannelSidebarProps) {
   const activeScenario = scenarios.find((s) => s.id === activeScenarioId) || scenarios[0];
 
@@ -111,6 +119,28 @@ export default function ChannelSidebar({
         </div>
       </div>
 
+      {/* Multi-Channel Compiler Toggle */}
+      <div className="p-3 bg-[#00000015] border-b border-[#ffffff1a] flex flex-col gap-2">
+        <button
+          onClick={onToggleMultiChannelMode}
+          className={`w-full py-2 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-between shadow-xs cursor-pointer ${
+            isMultiChannelMode
+              ? "bg-[#36C5F0] text-slate-900 font-extrabold"
+              : "bg-white/10 hover:bg-white/15 text-white"
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Layers className="w-3.5 h-3.5" />
+            <span>Multi-Channel Digest Mode</span>
+          </span>
+          <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase tracking-wider font-extrabold ${
+            isMultiChannelMode ? "bg-slate-900 text-white" : "bg-white/25 text-white"
+          }`}>
+            {isMultiChannelMode ? "ACTIVE" : "OFF"}
+          </span>
+        </button>
+      </div>
+
       {/* Navigable Channel List */}
       <div className="flex-1 overflow-y-auto p-2 space-y-4 custom-scrollbar">
         {/* Core Collaboration Channels */}
@@ -119,25 +149,45 @@ export default function ChannelSidebar({
             <span>Core Workspace Feed</span>
             <Layers className="w-3.5 h-3.5 text-white/50" />
           </h2>
-          <div className="space-y-0.5">
-            {coreChannels.map((chan) => (
-              <button
-                key={chan.id}
-                onClick={() => onSelectChannel(chan.id)}
-                className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  activeChannelId === chan.id 
-                    ? "bg-[#ffffff15] text-white" 
-                    : "text-purple-100 hover:bg-[#ffffff0a] opacity-80 hover:opacity-100"
-                }`}
-              >
-                <span className="flex items-center gap-2 text-left truncate">
-                  <Hash className={`w-4 h-4 ${activeChannelId === chan.id ? "text-white" : "text-[#ffffff60]"}`} />
-                  <span className="truncate">{chan.name}</span>
-                </span>
-                {/* Visual Unreads Sim */}
-                <span className="w-2 h-2 rounded-full bg-amber-400 opacity-80"></span>
-              </button>
-            ))}
+          <div className="space-y-0.5 font-sans">
+            {coreChannels.map((chan) => {
+              const isSelected = !!selectedChannelIds[chan.id];
+              const isCurrent = activeChannelId === chan.id && !isMultiChannelMode;
+              return (
+                <button
+                  key={chan.id}
+                  onClick={() => {
+                    if (isMultiChannelMode) {
+                      onToggleChannelSelect(chan.id);
+                    } else {
+                      onSelectChannel(chan.id);
+                    }
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer ${
+                    isCurrent 
+                      ? "bg-[#ffffff15] text-white" 
+                      : isMultiChannelMode && isSelected
+                      ? "bg-white/15 text-[#36C5F0]"
+                      : "text-purple-100 hover:bg-[#ffffff0a] opacity-85 hover:opacity-100"
+                  }`}
+                >
+                  <span className="flex items-center gap-2 text-left truncate">
+                    {isMultiChannelMode ? (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}} // handled by onClick on button
+                        className="w-3.5 h-3.5 rounded border-white/30 text-[#4A154B] focus:ring-0 mr-1 cursor-pointer accent-[#36C5F0]"
+                      />
+                    ) : (
+                      <Hash className={`w-4 h-4 ${isCurrent ? "text-white" : "text-[#ffffff60]"}`} />
+                    )}
+                    <span className="truncate">{chan.name}</span>
+                  </span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 opacity-80"></span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -148,25 +198,46 @@ export default function ChannelSidebar({
             <Activity className="w-3.5 h-3.5 text-white/50" />
           </h2>
           <div className="space-y-0.5">
-            {externalChannels.map((chan) => (
-              <button
-                key={chan.id}
-                onClick={() => onSelectChannel(chan.id)}
-                className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  activeChannelId === chan.id 
-                    ? "bg-[#ffffff15] text-white" 
-                    : "text-purple-100 hover:bg-[#ffffff0a] opacity-80 hover:opacity-100"
-                }`}
-              >
-                <span className="flex items-center gap-2 text-left truncate">
-                  <Hash className={`w-4 h-4 ${activeChannelId === chan.id ? "text-white" : "text-[#ffffff60]"}`} />
-                  <span className="truncate">{chan.name}</span>
-                </span>
-                <span className="bg-red-500 text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full leading-none">
-                  +1
-                </span>
-              </button>
-            ))}
+            {externalChannels.map((chan) => {
+              const isSelected = !!selectedChannelIds[chan.id];
+              const isCurrent = activeChannelId === chan.id && !isMultiChannelMode;
+              return (
+                <button
+                  key={chan.id}
+                  onClick={() => {
+                    if (isMultiChannelMode) {
+                      onToggleChannelSelect(chan.id);
+                    } else {
+                      onSelectChannel(chan.id);
+                    }
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer ${
+                    isCurrent 
+                      ? "bg-[#ffffff15] text-white" 
+                      : isMultiChannelMode && isSelected
+                      ? "bg-white/15 text-[#36C5F0]"
+                      : "text-purple-100 hover:bg-[#ffffff0a] opacity-85 hover:opacity-100"
+                  }`}
+                >
+                  <span className="flex items-center gap-2 text-left truncate">
+                    {isMultiChannelMode ? (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}} // handled by onClick on button
+                        className="w-3.5 h-3.5 rounded border-white/30 text-[#4A154B] focus:ring-0 mr-1 cursor-pointer accent-[#36C5F0]"
+                      />
+                    ) : (
+                      <Hash className={`w-4 h-4 ${isCurrent ? "text-white" : "text-[#ffffff60]"}`} />
+                    )}
+                    <span className="truncate">{chan.name}</span>
+                  </span>
+                  <span className="bg-red-500 text-white text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full leading-none shrink-0 scale-90">
+                    +1
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -177,22 +248,43 @@ export default function ChannelSidebar({
             <Award className="w-3.5 h-3.5 text-white/50" />
           </h2>
           <div className="space-y-0.5">
-            {strategicChannels.map((chan) => (
-              <button
-                key={chan.id}
-                onClick={() => onSelectChannel(chan.id)}
-                className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-                  activeChannelId === chan.id 
-                    ? "bg-[#ffffff15] text-white" 
-                    : "text-purple-100 hover:bg-[#ffffff0a] opacity-80 hover:opacity-100"
-                }`}
-              >
-                <span className="flex items-center gap-2 text-left truncate">
-                  <Hash className={`w-4 h-4 ${activeChannelId === chan.id ? "text-white" : "text-[#ffffff60]"}`} />
-                  <span className="truncate">{chan.name}</span>
-                </span>
-              </button>
-            ))}
+            {strategicChannels.map((chan) => {
+              const isSelected = !!selectedChannelIds[chan.id];
+              const isCurrent = activeChannelId === chan.id && !isMultiChannelMode;
+              return (
+                <button
+                  key={chan.id}
+                  onClick={() => {
+                    if (isMultiChannelMode) {
+                      onToggleChannelSelect(chan.id);
+                    } else {
+                      onSelectChannel(chan.id);
+                    }
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-md text-sm font-medium transition-all cursor-pointer ${
+                    isCurrent 
+                      ? "bg-[#ffffff15] text-white" 
+                      : isMultiChannelMode && isSelected
+                      ? "bg-white/15 text-[#36C5F0]"
+                      : "text-purple-100 hover:bg-[#ffffff0a] opacity-85 hover:opacity-100"
+                  }`}
+                >
+                  <span className="flex items-center gap-2 text-left truncate">
+                    {isMultiChannelMode ? (
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}} // handled by onClick on button
+                        className="w-3.5 h-3.5 rounded border-white/30 text-[#4A154B] focus:ring-0 mr-1 cursor-pointer accent-[#36C5F0]"
+                      />
+                    ) : (
+                      <Hash className={`w-4 h-4 ${isCurrent ? "text-white" : "text-[#ffffff60]"}`} />
+                    )}
+                    <span className="truncate">{chan.name}</span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
