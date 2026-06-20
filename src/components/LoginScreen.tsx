@@ -23,6 +23,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
   const [authMode, setAuthMode] = useState<"supabase" | "demo">(isSupabaseConfigured ? "supabase" : "demo");
   const [isRegistering, setIsRegistering] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showBypassOption, setShowBypassOption] = useState(false);
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; type: "success" | "error" | "info" } | null>(null);
 
   // Auto-fill demo credentials
@@ -30,10 +31,18 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
     setEmail("admin@acme.corp");
     setPassword("password123");
     setAuthMode("demo");
+    setShowBypassOption(false);
     setFeedbackMsg({
       text: "Demo credentials pre-filled. Click 'Begin Demo Session' to enter.",
       type: "info"
     });
+  };
+
+  const handleBypassWithCurrentEmail = () => {
+    setFeedbackMsg({ text: `Authenticating ${email || "user"} via Demo sandbox session...`, type: "success" });
+    setTimeout(() => {
+      onLoginSuccess(email || "demo@acme.corp", "demo");
+    }, 800);
   };
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
@@ -45,6 +54,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
     setIsLoading(true);
     setFeedbackMsg(null);
+    setShowBypassOption(false);
 
     // 1. SUPABASE MODE
     if (authMode === "supabase") {
@@ -79,6 +89,13 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
             });
             if (signInErr) throw signInErr;
             onLoginSuccess(email, "supabase");
+          } else if (data?.user && !data.user.identities) {
+            // Unconfirmed or requires confirmation
+            setFeedbackMsg({
+              text: "Registration initiated! An email confirmation is required by your Supabase project settings. Please check your inbox.",
+              type: "info"
+            });
+            setShowBypassOption(true);
           } else {
             setFeedbackMsg({
               text: "Success! Registration completed. Welcome to Workspace Pro.",
@@ -106,10 +123,20 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
         }
       } catch (err: any) {
         console.error("Supabase action error:", err);
-        setFeedbackMsg({
-          text: err.message || "Authentication failed. Double check your credentials.",
-          type: "error"
-        });
+        const isEmailNotConfirmed = err.message && err.message.toLowerCase().includes("email not confirmed");
+        
+        if (isEmailNotConfirmed) {
+          setFeedbackMsg({
+            text: "Supabase auth failed: Email is not confirmed. Supabase requires verifying this email address before login. Check your email or use the offline/demo bypass button below.",
+            type: "error"
+          });
+          setShowBypassOption(true);
+        } else {
+          setFeedbackMsg({
+            text: err.message || "Authentication failed. Double check your credentials.",
+            type: "error"
+          });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -260,7 +287,7 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
 
             {/* Error / Success Alerts */}
             {feedbackMsg && (
-              <div className={`p-3.5 rounded-xl text-xs space-y-1 border ${
+              <div className={`p-3.5 rounded-xl text-xs space-y-1.5 border ${
                 feedbackMsg.type === "success"
                   ? "bg-emerald-50 border-emerald-100 text-emerald-800"
                   : feedbackMsg.type === "error"
@@ -270,6 +297,16 @@ export default function LoginScreen({ onLoginSuccess }: LoginScreenProps) {
                 <p className="font-semibold leading-normal">
                   {feedbackMsg.text}
                 </p>
+                {showBypassOption && (
+                  <button
+                    type="button"
+                    onClick={handleBypassWithCurrentEmail}
+                    className="mt-2 w-full bg-slate-900 hover:bg-slate-855 text-white font-bold py-2 px-3 rounded-lg text-[10px] flex items-center justify-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-pulse" />
+                    <span>Bypass & Enter instantly with {email || "current email"}</span>
+                  </button>
+                )}
               </div>
             )}
 

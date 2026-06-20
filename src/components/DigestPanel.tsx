@@ -445,7 +445,7 @@ export default function DigestPanel({
             {errorMsg}
           </p>
           <p className="text-[10px] text-rose-600 pt-1 font-semibold leading-relaxed">
-            💡 Make sure you configure your **GEMINI_API_KEY** under **Settings &gt; Secrets** in the AI Studio sidebar, or confirm the server is responsive.
+            💡 Make sure you configure your **GEMINI_API_KEY** or **GOOGLE_API_KEY** under **Settings &gt; Secrets** in the AI Studio sidebar, or confirm the server is responsive.
           </p>
         </div>
       )}

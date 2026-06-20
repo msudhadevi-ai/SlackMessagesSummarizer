@@ -11,14 +11,38 @@ const PORT = 3000;
 
 app.use(express.json());
 
+// Helper to validate and filter out dummy key placeholders or empty values
+function isValidApiKey(key: string | undefined): boolean {
+  if (!key) return false;
+  const clean = key.trim().replace(/['"']/g, "");
+  if (!clean) return false;
+  if (
+    clean === "MY_GEMINI_API_KEY" ||
+    clean === "MY_GOOGLE_API_KEY" ||
+    clean.startsWith("MY_") ||
+    clean.includes("PLACEHOLDER") ||
+    clean.includes("YOUR_")
+  ) {
+    return false;
+  }
+  return true;
+}
+
 // Helper to get Gemini client lazily
 function getGeminiClient() {
-  const apiKey = process.env.GOOGLE_API_KEY || process.env.GEMINI_API_KEY;
+  const keys = [
+    process.env.GEMINI_API_KEY,
+    process.env.GOOGLE_API_KEY
+  ];
+  
+  const apiKey = keys.find(isValidApiKey);
+
   if (!apiKey) {
-    throw new Error("Neither GOOGLE_API_KEY nor GEMINI_API_KEY is configured. Please add your key in Settings > Secrets in the AI Studio UI.");
+    throw new Error("Neither GEMINI_API_KEY nor GOOGLE_API_KEY is configured with a valid active value. Please adjust this under Settings > Secrets in the AI Studio UI.");
   }
+
   return new GoogleGenAI({
-    apiKey,
+    apiKey: apiKey.trim().replace(/['"']/g, ""),
     httpOptions: {
       headers: {
         'User-Agent': 'aistudio-build',
@@ -137,7 +161,7 @@ Do not formulate any empty arrays or make up unrelated tasks. Base everything en
     console.error("Gemini digestion failure:", error);
     res.status(500).json({
       error: error.message || "An unexpected error occurred during summarization.",
-      hasApiKey: !!process.env.GOOGLE_API_KEY || !!process.env.GEMINI_API_KEY
+      hasApiKey: isValidApiKey(process.env.GOOGLE_API_KEY) || isValidApiKey(process.env.GEMINI_API_KEY)
     });
   }
 });
@@ -263,7 +287,7 @@ Do not hypothesize or create tasks out of thin air. Ground your synthesis in the
     console.error("Gemini multi-digestion failure:", error);
     res.status(500).json({
       error: error.message || "An unexpected error occurred during cross-channel summarization.",
-      hasApiKey: !!process.env.GOOGLE_API_KEY || !!process.env.GEMINI_API_KEY
+      hasApiKey: isValidApiKey(process.env.GOOGLE_API_KEY) || isValidApiKey(process.env.GEMINI_API_KEY)
     });
   }
 });
