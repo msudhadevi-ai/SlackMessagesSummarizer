@@ -28,6 +28,35 @@ function isValidApiKey(key: string | undefined): boolean {
   return true;
 }
 
+// Helper to safely diagnostic key state without leaking valuable secret data
+function getKeysDiagnostic(): string {
+  const diagnosticCount: string[] = [];
+  const keysToInspect = [
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+    "VITE_GEMINI_API_KEY",
+    "VITE_GOOGLE_API_KEY"
+  ];
+  for (const name of keysToInspect) {
+    const val = process.env[name];
+    if (val === undefined) {
+      diagnosticCount.push(`${name}: [undefined]`);
+    } else {
+      const clean = val.trim().replace(/['"']/g, "");
+      const len = clean.length;
+      if (len === 0) {
+        diagnosticCount.push(`${name}: [empty]`);
+      } else {
+        const masked = clean.length > 8 
+          ? (clean.slice(0, 4) + "..." + clean.slice(-4)) 
+          : "present-but-short";
+        diagnosticCount.push(`${name}: [len=${len}, mask=${masked}]`);
+      }
+    }
+  }
+  return diagnosticCount.join(" | ");
+}
+
 // Helper to get Gemini client lazily
 function getGeminiClient() {
   const keys = [
@@ -38,7 +67,8 @@ function getGeminiClient() {
   const apiKey = keys.find(isValidApiKey);
 
   if (!apiKey) {
-    throw new Error("Neither GEMINI_API_KEY nor GOOGLE_API_KEY is configured with a valid active value. Please adjust this under Settings > Secrets in the AI Studio UI.");
+    const diag = getKeysDiagnostic();
+    throw new Error(`Neither GEMINI_API_KEY nor GOOGLE_API_KEY is configured with a valid active value. Environment state: ${diag}. Please adjust this under Settings > Secrets in the AI Studio sidebar or in deploy environment variables.`);
   }
 
   return new GoogleGenAI({
@@ -84,7 +114,7 @@ You must follow the schema strictly and extract:
 Do not formulate any empty arrays or make up unrelated tasks. Base everything entirely on the Slack transcript.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.1-flash-lite",
       contents: `Perform the operational Scrum analysis and return a styled JSON. Here are the Slack logs:\n\n${formattedMessagesText}`,
       config: {
         systemInstruction,
@@ -210,7 +240,7 @@ You must follow the schema strictly and extract:
 Do not hypothesize or create tasks out of thin air. Ground your synthesis in the provided channels text.`;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3.5-flash",
+      model: "gemini-3.1-flash-lite",
       contents: `Perform cross-channel operational incident synthesis and return the finalized object structure:\n\n${formattedChannelsText}`,
       config: {
         systemInstruction,
